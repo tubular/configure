@@ -1,3 +1,7 @@
+0.6
+---
+* small changes to make compatible with both py27 and py34
+
 0.5
 ---
 

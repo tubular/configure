@@ -4,7 +4,7 @@
     ===================================================
 
 """
-
+from __future__ import print_function
 import sys
 from os import path, mkdir
 from inspect import getargspec
@@ -12,6 +12,8 @@ from types import FunctionType
 from re import compile as re_compile
 from collections import MutableMapping, Mapping
 from datetime import timedelta
+
+import six
 
 try:
     from yaml import Loader as Loader
@@ -163,7 +165,7 @@ class Configuration(MutableMapping):
                 self.__struct = self.__struct(
                     Configuration.from_dict({}, pwd=self._pwd))
 
-        for k, v in self.iteritems():
+        for k, v in self.items():
             self[k] = _impl(v)
 
         return self
@@ -562,7 +564,7 @@ def import_string(import_name, silent=False):
             return sys.modules[modname]
     except ImportError as e:
         if not silent:
-            raise ImportStringError(import_name, e).with_traceback(sys.exc_info()[2])
+            six.reraise(ImportStringError, ImportStringError(import_name, e), sys.exc_inf()[2])
 
 class ImportStringError(ImportError):
     """Provides information about a failed :func:`import_string` attempt.

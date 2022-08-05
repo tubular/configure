@@ -4,31 +4,33 @@
     ===================================================
 
 """
-from __future__ import print_function
 import sys
 from os import path, mkdir
 from inspect import getargspec
 from types import FunctionType
 from re import compile as re_compile
-from collections import MutableMapping, Mapping
+from collections.abc import MutableMapping, Mapping
 from datetime import timedelta
 
-import six
-
-try:
-    from yaml import Loader as Loader
-except ImportError:
-    from yaml import Loader
+from yaml import Loader
 
 __all__ = (
-    "Configuration", "ConfigurationError", "configure_logging",
-    "format_config", "print_config", "import_string", "ImportStringError")
+    "Configuration",
+    "ConfigurationError",
+    "configure_logging",
+    "format_config",
+    "print_config",
+    "import_string",
+    "ImportStringError",
+)
+
 
 class ConfigurationError(ValueError):
-    """ Configuration error"""
+    """Configuration error"""
+
 
 class Configuration(MutableMapping):
-    """ Configuration object
+    """Configuration object
 
     You should never instantiate this object but use ``from_file``,
     ``from_string`` or ``from_dict`` classmethods instead. Implements
@@ -44,7 +46,7 @@ class Configuration(MutableMapping):
         self.__struct = struct
 
     def merge(self, config):
-        """ Produce new configuration by merging ``config`` object into this
+        """Produce new configuration by merging ``config`` object into this
         one"""
         new = self.__class__({}, parent=self._parent, pwd=self._pwd)
         new._merge(self)
@@ -106,8 +108,7 @@ class Configuration(MutableMapping):
         for k, v in config.items():
             if isinstance(v, Mapping) and k in self:
                 if not isinstance(self[k], Mapping):
-                    raise ConfigurationError(
-                        "unresolveable conflict during merge")
+                    raise ConfigurationError("unresolveable conflict during merge")
                 self[k]._merge(v)
             else:
                 self[k] = v
@@ -139,7 +140,7 @@ class Configuration(MutableMapping):
         return self.merge(config)
 
     def configure(self, struct=None, _root=True):
-        """ Commit configuration
+        """Commit configuration
 
         This method performs all actions pending to this ``Configuration``
         object. You can also override configuration at this moment by providing
@@ -163,7 +164,8 @@ class Configuration(MutableMapping):
         if _root:
             if isinstance(self.__struct, Extends):
                 self.__struct = self.__struct(
-                    Configuration.from_dict({}, pwd=self._pwd))
+                    Configuration.from_dict({}, pwd=self._pwd)
+                )
 
         for k, v in self.items():
             self[k] = _impl(v)
@@ -176,9 +178,16 @@ class Configuration(MutableMapping):
     __str__ = __repr__
 
     @classmethod
-    def from_file(cls, filename, ctx=None, pwd=None, constructors=None,
-            multi_constructors=None, configure=True):
-        """ Construct :class:`.Configuration` object by reading and parsing file
+    def from_file(
+        cls,
+        filename,
+        ctx=None,
+        pwd=None,
+        constructors=None,
+        multi_constructors=None,
+        configure=True,
+    ):
+        """Construct :class:`.Configuration` object by reading and parsing file
         ``filename``.
 
         :param filename:
@@ -193,15 +202,26 @@ class Configuration(MutableMapping):
         if pwd is None:
             pwd = path.dirname(filename)
         with open(filename, "r") as f:
-            return cls.from_string(f.read(), ctx=ctx, pwd=pwd,
-                    constructors=constructors,
-                    multi_constructors=multi_constructors,
-                    configure=configure)
+            return cls.from_string(
+                f.read(),
+                ctx=ctx,
+                pwd=pwd,
+                constructors=constructors,
+                multi_constructors=multi_constructors,
+                configure=configure,
+            )
 
     @classmethod
-    def from_string(cls, string, ctx=None, pwd=None, constructors=None,
-            multi_constructors=None, configure=True):
-        """ Construct :class:`.Configuration` from ``string``.
+    def from_string(
+        cls,
+        string,
+        ctx=None,
+        pwd=None,
+        constructors=None,
+        multi_constructors=None,
+        configure=True,
+    ):
+        """Construct :class:`.Configuration` from ``string``.
 
         :param string:
             string to parse config from
@@ -212,15 +232,16 @@ class Configuration(MutableMapping):
             `_timedelta_constructor` and `_re_constructor` for examples.
         """
         ctx = ctx or {}
-        ctx['pwd'] = pwd
+        ctx["pwd"] = pwd
         string = string % ctx
-        cfg = cls.load(string, constructors=constructors,
-                multi_constructors=multi_constructors)
+        cfg = cls.load(
+            string, constructors=constructors, multi_constructors=multi_constructors
+        )
         return cls.from_dict(cfg, pwd=pwd, configure=configure)
 
     @classmethod
     def from_dict(cls, cfg, pwd=None, configure=True):
-        """ Construct :class:`.Configuration` from dict ``d``.
+        """Construct :class:`.Configuration` from dict ``d``.
 
         :param d:
             mapping object to use for config
@@ -257,40 +278,47 @@ class Configuration(MutableMapping):
 
     @classmethod
     def add_constructor(cls, name):
-        if not '_constructors' in cls.__dict__:
-            cls.__dict__['_constructors'] = dict(cls._constructors)
-        cname = '!%s' % name
+        if not "_constructors" in cls.__dict__:
+            cls.__dict__["_constructors"] = dict(cls._constructors)
+        cname = "!%s" % name
+
         def registration(func):
             if cname in cls._constructors:
                 raise ValueError("constructor '%s' already exist")
             cls._constructors[cname] = func
             return func
+
         return registration
 
     @classmethod
     def add_multi_constructor(cls, name):
-        if not '_multi_constructors' in cls.__dict__:
-            cls.__dict__['_multi_constructors'] = dict(cls._multi_constructors)
-        cname = '!%s:' % name
+        if "_multi_constructors" not in cls.__dict__:
+            cls.__dict__["_multi_constructors"] = dict(cls._multi_constructors)
+        cname = "!%s:" % name
+
         def registration(func):
             if cname in cls._multi_constructors:
                 raise ValueError("multiconstructor '%s' already exist")
             cls._multi_constructors[cname] = func
             return func
+
         return registration
 
-@Configuration.add_constructor('timedelta')
+
+@Configuration.add_constructor("timedelta")
 def _timedelta_contructor(loader, node):
     item = loader.construct_scalar(node)
 
-    if not isinstance(item, basestring) or not item:
+    if not isinstance(item, str) or not item:
         raise ConfigurationError(
-            "value '%s' cannot be interpreted as date range" % item)
+            "value '%s' cannot be interpreted as date range" % item
+        )
     num, typ = item[:-1], item[-1].lower()
 
     if not num.isdigit():
         raise ConfigurationError(
-            "value '%s' cannot be interpreted as date range" % item)
+            "value '%s' cannot be interpreted as date range" % item
+        )
 
     num = int(num)
 
@@ -306,62 +334,63 @@ def _timedelta_contructor(loader, node):
         return timedelta(seconds=num)
     else:
         raise ConfigurationError(
-            "value '%s' cannot be interpreted as date range" % item)
+            "value '%s' cannot be interpreted as date range" % item
+        )
 
-@Configuration.add_constructor('bytesize')
+
+@Configuration.add_constructor("bytesize")
 def _bytesize_constructor(loader, node):
     item = loader.construct_scalar(node)
 
-    if not isinstance(item, basestring) or not item:
-        raise ConfigurationError(
-            "value '%s' cannot be interpreted as byte size" % item)
+    if not isinstance(item, str) or not item:
+        raise ConfigurationError("value '%s' cannot be interpreted as byte size" % item)
 
     if item.isdigit():
-        return int(item) # bytes
+        return int(item)  # bytes
 
     num, typ = item[:-1], item[-1].lower()
 
-    if item[-2:].lower() in ('kb', 'mb', 'gb', 'tb', 'pb'):
+    if item[-2:].lower() in ("kb", "mb", "gb", "tb", "pb"):
         num, typ = item[:-2], item[-2:-1].lower()
-    elif item[-1:].lower() in ('k', 'm', 'b', 't', 'p', 'b'):
+    elif item[-1:].lower() in ("k", "m", "b", "t", "p", "b"):
         num, typ = item[:-1], item[-1].lower()
     else:
-        raise ConfigurationError(
-            "value '%s' cannot be interpreted as byte size" % item)
+        raise ConfigurationError("value '%s' cannot be interpreted as byte size" % item)
 
     if not num.isdigit():
-        raise ConfigurationError(
-            "value '%s' cannot be interpreted as byte size" % item)
+        raise ConfigurationError("value '%s' cannot be interpreted as byte size" % item)
 
     num = int(num)
 
-    if typ == 'b':
+    if typ == "b":
         return num
-    elif typ == 'k':
+    elif typ == "k":
         return num * 1024
-    elif typ == 'm':
+    elif typ == "m":
         return num * 1024 * 1024
-    elif typ == 'g':
+    elif typ == "g":
         return num * 1024 * 1024 * 1024
-    elif typ == 't':
+    elif typ == "t":
         return num * 1024 * 1024 * 1024 * 1024
-    elif typ == 'p':
+    elif typ == "p":
         return num * 1024 * 1024 * 1024 * 1024 * 1024
     else:
-        raise ConfigurationError(
-            "value '%s' cannot be interpreted as byte size" % item)
+        raise ConfigurationError("value '%s' cannot be interpreted as byte size" % item)
 
-@Configuration.add_constructor('re')
+
+@Configuration.add_constructor("re")
 def _re_constructor(loader, node):
     item = loader.construct_scalar(node)
 
-    if not isinstance(item, basestring) or not item:
+    if not isinstance(item, str) or not item:
         raise ConfigurationError(
-            "value '%s' cannot be interpreted as regular expression" % item)
+            "value '%s' cannot be interpreted as regular expression" % item
+        )
 
     return re_compile(item)
 
-@Configuration.add_constructor('directory')
+
+@Configuration.add_constructor("directory")
 def _directory_constructor(loader, node):
     item = loader.construct_scalar(node)
     if not path.exists(item):
@@ -370,13 +399,13 @@ def _directory_constructor(loader, node):
         raise ConfigurationError("'%s' is not a directory" % item)
     return item
 
-class Directive(object):
 
+class Directive(object):
     def __call__(self, ctx):
         raise NotImplementedError()
 
-class Ref(Directive):
 
+class Ref(Directive):
     def __init__(self, ref):
         self.ref = ref
 
@@ -387,16 +416,17 @@ class Ref(Directive):
         return o
 
     def __str__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.ref)
+        return "%s(%s)" % (self.__class__.__name__, self.ref)
 
     __repr__ = __str__
 
-@Configuration.add_multi_constructor('ref')
+
+@Configuration.add_multi_constructor("ref")
 def _ref_constructor(loader, tag, node):
     return Ref(tag)
 
-class Factory(Directive):
 
+class Factory(Directive):
     def __init__(self, factory, config):
         self.factory = factory
         self.config = config
@@ -404,7 +434,7 @@ class Factory(Directive):
     def __call__(self, ctx):
         config = dict(self.config)
         factory = self.factory
-        if isinstance(factory, basestring):
+        if isinstance(factory, str):
             try:
                 factory = import_string(factory)
             except ImportStringError as e:
@@ -422,8 +452,7 @@ class Factory(Directive):
 
         for a in argspec.args[:pos_cut]:
             if not a in config:
-                raise ConfigurationError(
-                    "missing '%s' argument for %s" % (a, factory))
+                raise ConfigurationError("missing '%s' argument for %s" % (a, factory))
             arg = config.pop(a)
             if isinstance(arg, Directive):
                 arg = arg(ctx)
@@ -445,15 +474,17 @@ class Factory(Directive):
 
         if config:
             raise ConfigurationError(
-                "extra arguments '%s' found for %s" % (config, factory))
+                "extra arguments '%s' found for %s" % (config, factory)
+            )
         return factory(*args, **kwargs)
 
     def __str__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.factory)
+        return "%s(%s)" % (self.__class__.__name__, self.factory)
 
     __repr__ = __str__
 
-@Configuration.add_multi_constructor('factory')
+
+@Configuration.add_multi_constructor("factory")
 def _factory_constructor(loader, tag, node):
     if node.value:
         item = loader.construct_mapping(node, deep=True)
@@ -461,8 +492,8 @@ def _factory_constructor(loader, tag, node):
     else:
         return Factory(tag, {})
 
-class Obj(Directive):
 
+class Obj(Directive):
     def __init__(self, obj):
         self.obj = obj
 
@@ -472,24 +503,26 @@ class Obj(Directive):
         except ImportStringError as e:
             raise ConfigurationError("cannot import obj: %s" % e)
 
-@Configuration.add_multi_constructor('obj')
+
+@Configuration.add_multi_constructor("obj")
 def _obj_constructor(loader, tag, node):
     return Obj(tag)
 
-class Include(Directive):
 
+class Include(Directive):
     def __init__(self, filename):
         self.filename = filename
 
     def __call__(self, ctx):
         return Configuration.from_file(path.join(ctx._pwd, self.filename))
 
-@Configuration.add_multi_constructor('include')
+
+@Configuration.add_multi_constructor("include")
 def _include_constructor(loader, tag, node):
     return Include(tag)
 
-class Extends(Directive):
 
+class Extends(Directive):
     def __init__(self, filename, config):
         self.filename = filename
         self.config = config
@@ -511,16 +544,19 @@ class Extends(Directive):
     def __contains__(self, name):
         return name in self.config
 
-@Configuration.add_multi_constructor('extends')
+
+@Configuration.add_multi_constructor("extends")
 def _extends_constructor(loader, tag, node):
     item = loader.construct_mapping(node, deep=True)
     return Extends(tag, item)
 
-@Configuration.add_constructor('logging')
+
+@Configuration.add_constructor("logging")
 def _logging_constructor(loader, node):
     config = loader.construct_mapping(node, deep=True)
-    disable_existing_loggers = config.pop('disable_existing_loggers', False)
+    disable_existing_loggers = config.pop("disable_existing_loggers", False)
     configure_logging(config, disable_existing_loggers=disable_existing_loggers)
+
 
 def import_string(import_name, silent=False):
     """Imports an object based on a string.  This is useful if you want to
@@ -540,31 +576,29 @@ def import_string(import_name, silent=False):
 
     :copyright: (c) 2011 by the Werkzeug Team
     """
-    # force the import name to automatically convert to strings
-    if isinstance(import_name, unicode):
-        import_name = str(import_name)
     try:
-        if ':' in import_name:
-            module, obj = import_name.split(':', 1)
-        elif '.' in import_name:
-            module, obj = import_name.rsplit('.', 1)
+        if ":" in import_name:
+            module, obj = import_name.split(":", 1)
+        elif "." in import_name:
+            module, obj = import_name.rsplit(".", 1)
         else:
             return __import__(import_name)
         # __import__ is not able to handle unicode strings in the fromlist
         # if the module is a package
-        if isinstance(obj, unicode):
-            obj = obj.encode('utf-8')
+        if isinstance(obj, str):
+            obj = obj.encode("utf-8")
         try:
             return getattr(__import__(module, None, None, [obj]), obj)
         except (ImportError, AttributeError):
             # support importing modules not yet set up by the parent module
             # (or package for that matter)
-            modname = module + '.' + obj
+            modname = module + "." + obj
             __import__(modname)
             return sys.modules[modname]
     except ImportError as e:
         if not silent:
-            six.reraise(ImportStringError, ImportStringError(import_name, e), sys.exc_inf()[2])
+            raise ImportStringError(import_name, e)
+
 
 class ImportStringError(ImportError):
     """Provides information about a failed :func:`import_string` attempt.
@@ -582,34 +616,43 @@ class ImportStringError(ImportError):
         self.exception = exception
 
         msg = (
-            'import_string() failed for %r. Possible reasons are:\n\n'
-            '- missing __init__.py in a package;\n'
-            '- package or module path not included in sys.path;\n'
-            '- duplicated package or module name taking precedence in '
-            'sys.path;\n'
-            '- missing module, class, function or variable;\n\n'
-            'Debugged import:\n\n%s\n\n'
-            'Original exception:\n\n%s: %s')
+            "import_string() failed for %r. Possible reasons are:\n\n"
+            "- missing __init__.py in a package;\n"
+            "- package or module path not included in sys.path;\n"
+            "- duplicated package or module name taking precedence in "
+            "sys.path;\n"
+            "- missing module, class, function or variable;\n\n"
+            "Debugged import:\n\n%s\n\n"
+            "Original exception:\n\n%s: %s"
+        )
 
-        name = ''
+        name = ""
         tracked = []
-        for part in import_name.replace(':', '.').split('.'):
-            name += (name and '.') + part
+        for part in import_name.replace(":", ".").split("."):
+            name += (name and ".") + part
             imported = import_string(name, silent=True)
             if imported:
                 tracked.append((name, imported.__file__))
             else:
-                track = ['- %r found in %r.' % (n, i) for n, i in tracked]
-                track.append('- %r not found.' % name)
-                msg = msg % (import_name, '\n'.join(track),
-                             exception.__class__.__name__, str(exception))
+                track = ["- %r found in %r." % (n, i) for n, i in tracked]
+                track.append("- %r not found." % name)
+                msg = msg % (
+                    import_name,
+                    "\n".join(track),
+                    exception.__class__.__name__,
+                    str(exception),
+                )
                 break
 
         ImportError.__init__(self, msg)
 
     def __repr__(self):
-        return '<%s(%r, %r)>' % (self.__class__.__name__, self.import_name,
-                                 self.exception)
+        return "<%s(%r, %r)>" % (
+            self.__class__.__name__,
+            self.import_name,
+            self.exception,
+        )
+
 
 def format_config(config, _lvl=0):
     indent = "  " * _lvl
@@ -622,16 +665,19 @@ def format_config(config, _lvl=0):
             buf += "%s%s\n" % ("  " * (_lvl + 1), v)
     return buf
 
+
 def print_config(config):
     print(format_config(config))
+
 
 def obj_by_ref(o, path):
     for s in path.split("."):
         o = getattr(o, s)
     return o
 
+
 def configure_logging(logcfg=None, disable_existing_loggers=True):
-    """ Configure logging in a sane way
+    """Configure logging in a sane way
 
     :param logcfg:
         may be a. a dict suitable for :func:`logging.config.dictConfig`, b.
@@ -651,53 +697,53 @@ def configure_logging(logcfg=None, disable_existing_loggers=True):
                 "root": {
                     "handlers": ["syslog"],
                     "level": "NOTSET",
-                }
+                },
             }
     else:
         logcfg = {}
 
     logcfg = dict(logcfg)
 
-    if not "version" in logcfg:
+    if "version" not in logcfg:
         logcfg["version"] = 1
 
-    if not "disable_existing_loggers" in logcfg:
+    if "disable_existing_loggers" not in logcfg:
         logcfg["disable_existing_loggers"] = disable_existing_loggers
 
     # formatters
 
-    if not "formatters" in logcfg:
+    if "formatters" not in logcfg:
         logcfg["formatters"] = {}
 
-    if not "brief" in logcfg["formatters"]:
+    if "brief" not in logcfg["formatters"]:
         logcfg["formatters"]["brief"] = {
             "format": "%(message)s",
         }
 
-    if not "precise" in logcfg["formatters"]:
+    if "precise" not in logcfg["formatters"]:
         logcfg["formatters"]["precise"] = {
             "format": "%(asctime)s %(levelname)-8s %(name)-15s %(message)s",
         }
 
     # handlers
 
-    if not "root" in logcfg:
+    if "root" not in logcfg:
         logcfg["root"] = {
             "handlers": ["console"],
             "level": "NOTSET",
         }
 
-    if not "handlers" in logcfg:
+    if "handlers" not in logcfg:
         logcfg["handlers"] = {}
 
-    if not "syslog" in logcfg["handlers"]:
+    if "syslog" not in logcfg["handlers"]:
         logcfg["handlers"]["syslog"] = {
             "class": "logging.handlers.SysLogHandler",
             "formatter": "precise",
             "level": "NOTSET",
         }
 
-    if not "console" in logcfg["handlers"]:
+    if "console" not in logcfg["handlers"]:
         logcfg["handlers"]["console"] = {
             "class": "logging.StreamHandler",
             "formatter": "precise",
@@ -705,4 +751,5 @@ def configure_logging(logcfg=None, disable_existing_loggers=True):
         }
 
     from logging.config import dictConfig
+
     dictConfig(logcfg)
